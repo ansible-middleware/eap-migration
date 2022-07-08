@@ -1,0 +1,158 @@
+---
+- name: EAP 7.2 to 7.3 migration playbook
+  hosts: localhost
+  vars:
+    # vars for source, rpm based installed
+    eap_source_version: 7.2
+    jboss_eap_group_install_name: jboss-eap7-jdk11
+    installed_eap_source: True
+    previous_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
+    wildfly_java_package_name: java-11-openjdk-headless
+    # vars for JDBC Driver config
+    jdbc_driver_module_name: "org.mariadb"
+    jdbc_driver_version: 2.7.4
+    jdbc_driver_jar_filename: "mariadb-java-client-{{ jdbc_driver_version }}.jar"
+    jdbc_driver_module_dir: "{{ previous_jboss_eap_home }}/modules/org/mariadb/main"
+    wildfly_user: root
+    wildfly_group: root
+    # vars for target EAP, installed with zipfle
+    target_eap_version: 7.3
+    target_zipfile: "jboss-eap-{{ target_eap_version }}.0.zip"
+    target_jboss_install_dir: /opt/jboss_eap/
+    target_jboss_home: "{{ target_jboss_install_dir }}/jboss-eap-{{ target_eap_version }}/"
+    # migration toolkit vars
+    migration_tool: "{{ target_jboss_home }}/bin/jboss-server-migration.sh"
+  collections:
+    - redhat.jboss_eap
+  pre_tasks:
+
+    - name: "Ensures all required parameters are defined"
+      ansible.builtin.assert:
+        that:
+          - eap_source_version is defined
+          - ansible_distribution_major_version is defined
+          - ansible_architecture is defined
+          - ansible_os_family is defined
+          - ansible_os_family == "RedHat"
+        quiet: True
+        fail_msg: "Required parameters are missing and/or system is NOT RHEL."
+
+    - ansible.builtin.set_fact:
+        eap_repos_name: "jb-eap-{{ eap_source_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
+        eap_repo_state_file: "/opt/.eap-{{ eap_source_version }}.repo.enabled"
+
+    - debug:
+        var: eap_repos_name
+
+    - block:
+        - name: "Ensures JBoss EAP 7.2 repos are enabled."
+          ansible.builtin.command: "subscription-manager repos --enable={{ eap_repos_name }}"
+          args:
+            creates: "{{ eap_repo_state_file }}"
+
+        - name: "Ensures state file exists"
+          ansible.builtin.file:
+            path: "{{ eap_repo_state_file }}"
+            state: touch
+            modification_time: preserve
+            access_time: preserve
+
+        - name: "Ensures group package {{ jboss_eap_group_install_name }} is installed"
+          ansible.builtin.command: "dnf groupinstall -y {{ jboss_eap_group_install_name }}"
+          args:
+            creates: /opt/rh/eap7/
+
+      when:
+       - installed_eap_source is defined
+       - installed_eap_source
+
+    - name: "Install Maria DB driver in {{ previous_jboss_eap_home }}"
+      ansible.builtin.include_role:
+        name: wildfly_driver
+      vars:
+        jdbc_driver_jar_url: "https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/{{ jdbc_driver_version }}/mariadb-java-client-{{ jdbc_driver_version }}.jar"
+
+    - name: "Ensures JBoss EAP {{ eap_source_version }} is running }}"
+      ansible.builtin.include_role:
+        name: wildfly_systemd
+      vars:
+        wildfly_home: "{{ previous_jboss_eap_home }}"
+        wildfly_systemd_enabled: True
+
+    - ansible.builtin.set_fact:
+        path_to_driver: "{{ jdbc_driver_module_dir }}/{{ jdbc_driver_jar_filename }}"
+
+    - block:
+      - name: "Checks if MariaDB driver is activated"
+        ansible.builtin.include_role:
+          name: wildfly_utils
+          tasks_from: jboss_cli.yml
+        vars:
+          jboss_home: "{{ previous_jboss_eap_home }}"
+          query: "/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:read-resource"
+          #        query: "/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_module_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name=org.mariadb.jdbc.Driver)"
+          #        query: "'module add --name={{ jdbc_driver_module_name }} --resources={{ path_to_driver }} --dependencies=javax.api,javax.transaction.api'
+      rescue:
+
+      - name: "Deploy MariaDB driver is activated"
+        ansible.builtin.include_role:
+          name: wildfly_utils
+          tasks_from: jboss_cli.yml
+        vars:
+          jboss_home: "{{ previous_jboss_eap_home }}"
+          query: "'/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_module_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name=org.mariadb.jdbc.Driver)'"
+          #        query: "'module add --name={{ jdbc_driver_module_name }} --resources={{ path_to_driver }} --dependencies=javax.api,javax.transaction.api'
+
+      - ansible.builtin.debug:
+          msg: "{{ cli_result }}"
+  tasks:
+    - name: "Ensures required dependencies are installed."
+      ansible.builtin.package:
+        name: "{{ package }}"
+      loop:
+        - unzip
+      loop_control:
+        loop_var: package
+
+    - name: "Ensures {{ target_jboss_install_dir }} exists."
+      ansible.builtin.file:
+        path: "{{ target_jboss_install_dir }}"
+        state: directory
+
+    - name: "Ensures new EAP version {{ target_zipfile }} has been unarchive into {{ target_jboss_install_dir }}"
+      ansible.builtin.unarchive:
+        src: "{{ target_zipfile }}"
+        dest: "{{ target_jboss_install_dir }}"
+        creates: "{{ target_jboss_home }}/bin/standalone.sh"
+
+  post_tasks:
+    - ansible.builtin.stat:
+        path: "{{ migration_tool }}"
+      register: migration_tool_state
+
+    - ansible.builtin.assert:
+        that:
+          - migration_tool_state is defined
+          - migration_tool_state.stat is defined
+          - migration_tool_state.stat.exists is defined
+          - migration_tool_state.stat.exists
+          - migration_tool_state.stat.isreg is defined
+          - migration_tool_state.stat.isreg
+        quiet: True
+        fail_msg: "Invalid path to migration tool: {{ migration_tool }}."
+
+    - name: "Ensures migration configuration is deployed"
+      ansible.builtin.template:
+        src: templates/environment.properties.j2
+        dest: "{{ target_jboss_home }}/migration/configuration/environment.properties" 
+
+    - name: "Run migration tool"
+      ansible.builtin.command: "{{ migration_tool }} --non-interactive --source {{ previous_jboss_eap_home }} --environment {{ target_jboss_home }}/migration/configuration/environment.properties"
+      register: migration_results
+      changed_when: 
+        - '"Migration Result: SUCCESS" in migration_results.stdout'
+
+    - name: "Display results of migration"
+      ansible.builtin.debug:
+        msg: "{{ migration_results }}"
+      changed_when: False

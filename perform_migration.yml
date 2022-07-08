@@ -1,0 +1,151 @@
+---
+- name: Perform migration from EAP 7.3 to 7.4 playbook
+  hosts: localhost
+  vars:
+    # vars for source, rpm based installed
+    eap_source_version: 7.2
+    jboss_eap_group_install_name: jboss-eap7-jdk11
+    eap_configuration_file: standalone.xml
+    installed_eap_source: True
+    previous_jboss_eap_home: /opt/jboss_eap//jboss-eap-7.3/
+    wildfly_java_package_name: java-11-openjdk-headless
+    # vars for JDBC Driver config
+    jdbc_driver_module_name: "org.mariadb"
+    jdbc_driver_version: 2.7.4
+    jdbc_driver_jar_filename: "mariadb-java-client-{{ jdbc_driver_version }}.jar"
+    jdbc_driver_module_dir: "{{ previous_jboss_eap_home }}/modules/org/mariadb/main"
+    wildfly_user: root
+    wildfly_group: root
+    # vars for target EAP, installed with zipfle
+    target_eap_version: 7.3
+    target_jboss_home: /opt/rh/eap7/root/usr/share/wildfly/
+    # migration toolkit vars
+    migration_tool: "{{ target_jboss_home }}/bin/jboss-server-migration.sh"
+
+    skip_group_remove: True
+  collections:
+    - redhat.jboss_eap
+  pre_tasks:
+
+    - name: "Ensures all required parameters are defined"
+      ansible.builtin.assert:
+        that:
+          - eap_source_version is defined
+          - target_eap_version is defined
+          - ansible_distribution_major_version is defined
+          - ansible_architecture is defined
+          - ansible_os_family is defined
+          - ansible_os_family == "RedHat"
+        quiet: True
+        fail_msg: "Required parameters are missing and/or system is NOT RHEL."
+
+    - name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
+      ansible.builtin.command: "dnf group remove -y {{ jboss_eap_group_install_name }}"
+      register: dnf_group_res
+      changed_when:
+        - 'not "Nothing to do." in dnf_group_res.stdout'
+      when:
+        - not skip_group_remove is defined
+
+    - ansible.builtin.set_fact:
+        eap_repos_name: "jb-eap-{{ eap_source_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
+
+    - name: "Ensures JBoss EAP 7.2 repos are disabled."
+      ansible.builtin.command: "subscription-manager repos --disable={{ eap_repos_name }}"
+      changed_when: False
+
+    - ansible.builtin.set_fact:
+        eap_repos_name: "jb-eap-{{ target_eap_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
+
+    - block:
+        - ansible.builtin.set_fact:
+            repo_state_file: "/opt/.eap.repo.{{ target_eap_version }}.enabled"
+
+        - name: "Ensures JBoss EAP 7.2 repos are enabled."
+          ansible.builtin.command: "subscription-manager repos --enable={{ eap_repos_name }}"
+          args:
+            creates: "{{ repo_state_file }}"
+
+        - name: "Ensures state file exists"
+          ansible.builtin.file:
+            path: "{{ repo_state_file }}"
+            state: touch
+            modification_time: preserve
+            access_time: preserve
+
+        - name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
+          ansible.builtin.command: "dnf groupinstall -y {{ jboss_eap_group_install_name }}"
+          args:
+            creates: /opt/rh/eap7/
+
+      when:
+       - installed_eap_source is defined
+       - installed_eap_source
+
+  tasks:
+    - ansible.builtin.set_fact:
+        migration_state_file: /opt/rh/eap7/root/usr/share/wildfly/migration/.migrated
+
+    - name: "Load migration state file data"
+      ansible.builtin.stat:
+        path: "{{ migration_state_file }}"
+      register: is_migration_done
+    - ansible.builtin.assert:
+        that:
+          - is_migration_done is defined
+          - is_migration_done.stat is defined
+          - is_migration_done.stat.exists is defined
+        quiet: True
+        fail_msg: "Failed to retrieve metadata on migration state file: {{ migration_state_file }}."
+
+    - block:
+
+        - ansible.builtin.set_fact:
+            migrated_conf: "{{ previous_jboss_eap_home }}/standalone/configuration/{{ eap_configuration_file }}"
+            target_conf: "{{ target_jboss_home }}/standalone/configuration/{{ eap_configuration_file }}"
+
+        - name: "Copy migrated configuration from {{ migrated_conf }} file to target {{ target_conf }}."
+          ansible.builtin.copy:
+            src: "{{ migrated_conf }}"
+            dest: "{{ target_conf }}"
+            owner: "{{ wildfly_user }}"
+            group: "{{ wildfly_group }}"
+            mode: '0644'
+
+        - ansible.builtin.file:
+            path: /opt/test
+            state: directory
+
+
+        - name: "Ensures 'rsync' is installed."
+          ansible.builtin.package:
+            name: rsync
+            state: present
+
+        - name: "Synchronize custom modules"
+          ansible.posix.synchronize:
+            src: "{{ previous_jboss_eap_home }}/modules"
+            #dest: "{{ target_jboss_home }}/modules/"
+            dest: /opt/test
+            copy_links: no
+            rsync_opts:
+              - "--exclude {{ previous_jboss_eap_home }}/modules/system"
+
+        - name: "Ensures state file exists"
+          ansible.builtin.file:
+            path: "{{ migration_state_file }}"
+            state: touch
+            modification_time: preserve
+            access_time: preserve
+
+      rescue:
+        - name: "Migration has failed."
+          ansible.builtin.debug:
+            msg: "Migration has failed."
+      when:
+        - not is_migration_done.stat.exists
+
+    - ansible.builtin.debug:
+        msg: "Server has already been migrated."
+      when:
+        - is_migration_done.stat.exists
