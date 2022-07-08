@@ -21,7 +21,6 @@
     target_jboss_install_dir: /opt/jboss_eap/
     target_jboss_home: "{{ target_jboss_install_dir }}/jboss-eap-{{ target_eap_version }}/"
     # migration toolkit vars
-    migration_tool: "{{ target_jboss_home }}/bin/jboss-server-migration.sh"
   collections:
     - redhat.jboss_eap
   pre_tasks:
@@ -90,33 +89,6 @@
         creates: "{{ target_jboss_home }}/bin/standalone.sh"
 
   post_tasks:
-    - ansible.builtin.stat:
-        path: "{{ migration_tool }}"
-      register: migration_tool_state
-
-    - ansible.builtin.assert:
-        that:
-          - migration_tool_state is defined
-          - migration_tool_state.stat is defined
-          - migration_tool_state.stat.exists is defined
-          - migration_tool_state.stat.exists
-          - migration_tool_state.stat.isreg is defined
-          - migration_tool_state.stat.isreg
-        quiet: True
-        fail_msg: "Invalid path to migration tool: {{ migration_tool }}."
-
-    - name: "Ensures migration configuration is deployed"
-      ansible.builtin.template:
-        src: templates/environment.properties.j2
-        dest: "{{ target_jboss_home }}/migration/configuration/environment.properties"
-
-    - name: "Run migration tool"
-      ansible.builtin.command: "{{ migration_tool }} --non-interactive --source {{ previous_jboss_eap_home }} --environment {{ target_jboss_home }}/migration/configuration/environment.properties"
-      register: migration_results
-      changed_when:
-        - '"Migration Result: SUCCESS" in migration_results.stdout'
-
-    - name: "Display results of migration"
-      ansible.builtin.debug:
-        msg: "{{ migration_results }}"
-      changed_when: False
+    - name: "Peform migration from {{ previous_jboss_eap_home }} to {{ target_jboss_home }}."
+      ansible.builtin.include_role:
+        name: wildfly_migration
