@@ -27,18 +27,6 @@
     - redhat.jboss_eap
   pre_tasks:
 
-    - name: "Ensures all required parameters are defined"
-      ansible.builtin.assert:
-        that:
-          - eap_source_version is defined
-          - target_eap_version is defined
-          - ansible_distribution_major_version is defined
-          - ansible_architecture is defined
-          - ansible_os_family is defined
-          - ansible_os_family == "RedHat"
-        quiet: True
-        fail_msg: "Required parameters are missing and/or system is NOT RHEL."
-
     - name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
       ansible.builtin.command: "dnf group remove -y {{ jboss_eap_group_install_name }}"
       register: dnf_group_res
@@ -54,33 +42,37 @@
       ansible.builtin.command: "subscription-manager repos --disable={{ eap_repos_name }}"
       changed_when: False
 
-    - ansible.builtin.set_fact:
-        eap_repos_name: "jb-eap-{{ target_eap_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
+    - name: "Ensures EAP {{ target_eap_version }} is installed."
+      ansible.builtin.include_role:
+        name: eap_subs
 
-    - block:
-        - ansible.builtin.set_fact:
-            repo_state_file: "/opt/.eap.repo.{{ target_eap_version }}.enabled"
-
-        - name: "Ensures JBoss EAP 7.2 repos are enabled."
-          ansible.builtin.command: "subscription-manager repos --enable={{ eap_repos_name }}"
-          args:
-            creates: "{{ repo_state_file }}"
-
-        - name: "Ensures state file exists"
-          ansible.builtin.file:
-            path: "{{ repo_state_file }}"
-            state: touch
-            modification_time: preserve
-            access_time: preserve
-
-        - name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
-          ansible.builtin.command: "dnf groupinstall -y {{ jboss_eap_group_install_name }}"
-          args:
-            creates: /opt/rh/eap7/
-
-      when:
-       - installed_eap_source is defined
-       - installed_eap_source
+#    - ansible.builtin.set_fact:
+#        eap_repos_name: "jb-eap-{{ target_eap_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
+#
+#    - block:
+#        - ansible.builtin.set_fact:
+#            repo_state_file: "/opt/.eap.repo.{{ target_eap_version }}.enabled"
+#
+#        - name: "Ensures JBoss EAP 7.2 repos are enabled."
+#          ansible.builtin.command: "subscription-manager repos --enable={{ eap_repos_name }}"
+#          args:
+#            creates: "{{ repo_state_file }}"
+#
+#        - name: "Ensures state file exists"
+#          ansible.builtin.file:
+#            path: "{{ repo_state_file }}"
+#            state: touch
+#            modification_time: preserve
+#            access_time: preserve
+#
+#        - name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
+#          ansible.builtin.command: "dnf groupinstall -y {{ jboss_eap_group_install_name }}"
+#          args:
+#            creates: /opt/rh/eap7/
+#
+#      when:
+#       - installed_eap_source is defined
+#       - installed_eap_source
 
   tasks:
     - ansible.builtin.set_fact:

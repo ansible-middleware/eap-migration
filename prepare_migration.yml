@@ -1,5 +1,5 @@
 ---
-- name: EAP 7.2 to 7.3 migration playbook
+- name: EAP {{ eap_source_version }} to 7.3 migration playbook
   hosts: localhost
   vars:
     # vars for source, rpm based installed
@@ -26,45 +26,9 @@
     - redhat.jboss_eap
   pre_tasks:
 
-    - name: "Ensures all required parameters are defined"
-      ansible.builtin.assert:
-        that:
-          - eap_source_version is defined
-          - ansible_distribution_major_version is defined
-          - ansible_architecture is defined
-          - ansible_os_family is defined
-          - ansible_os_family == "RedHat"
-        quiet: True
-        fail_msg: "Required parameters are missing and/or system is NOT RHEL."
-
-    - ansible.builtin.set_fact:
-        eap_repos_name: "jb-eap-{{ eap_source_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
-        eap_repo_state_file: "/opt/.eap-{{ eap_source_version }}.repo.enabled"
-
-    - debug:
-        var: eap_repos_name
-
-    - block:
-        - name: "Ensures JBoss EAP 7.2 repos are enabled."
-          ansible.builtin.command: "subscription-manager repos --enable={{ eap_repos_name }}"
-          args:
-            creates: "{{ eap_repo_state_file }}"
-
-        - name: "Ensures state file exists"
-          ansible.builtin.file:
-            path: "{{ eap_repo_state_file }}"
-            state: touch
-            modification_time: preserve
-            access_time: preserve
-
-        - name: "Ensures group package {{ jboss_eap_group_install_name }} is installed"
-          ansible.builtin.command: "dnf groupinstall -y {{ jboss_eap_group_install_name }}"
-          args:
-            creates: /opt/rh/eap7/
-
-      when:
-       - installed_eap_source is defined
-       - installed_eap_source
+    - name: "Ensure EAP {{ eap_source_version }} is installed."
+      ansible.builtin.include_role:
+        name: eap_subs
 
     - name: "Install Maria DB driver in {{ previous_jboss_eap_home }}"
       ansible.builtin.include_role:
@@ -144,12 +108,12 @@
     - name: "Ensures migration configuration is deployed"
       ansible.builtin.template:
         src: templates/environment.properties.j2
-        dest: "{{ target_jboss_home }}/migration/configuration/environment.properties" 
+        dest: "{{ target_jboss_home }}/migration/configuration/environment.properties"
 
     - name: "Run migration tool"
       ansible.builtin.command: "{{ migration_tool }} --non-interactive --source {{ previous_jboss_eap_home }} --environment {{ target_jboss_home }}/migration/configuration/environment.properties"
       register: migration_results
-      changed_when: 
+      changed_when:
         - '"Migration Result: SUCCESS" in migration_results.stdout'
 
     - name: "Display results of migration"
