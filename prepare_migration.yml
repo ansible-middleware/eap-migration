@@ -53,8 +53,6 @@
         vars:
           jboss_home: "{{ previous_jboss_eap_home }}"
           query: "/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:read-resource"
-          #        query: "/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_module_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name=org.mariadb.jdbc.Driver)"
-          #        query: "'module add --name={{ jdbc_driver_module_name }} --resources={{ path_to_driver }} --dependencies=javax.api,javax.transaction.api'
       rescue:
 
       - name: "Deploy MariaDB driver is activated"
@@ -63,8 +61,11 @@
           tasks_from: jboss_cli.yml
         vars:
           jboss_home: "{{ previous_jboss_eap_home }}"
-          query: "'/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_module_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name=org.mariadb.jdbc.Driver)'"
-          #        query: "'module add --name={{ jdbc_driver_module_name }} --resources={{ path_to_driver }} --dependencies=javax.api,javax.transaction.api'
+          query: "{{ item }}"
+        loop:
+          - "'/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_module_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name=org.mariadb.jdbc.Driver)'"
+          - "'data-source add --jndi-name=java:/MariaDS --name=MariaDBPool --connection-url=jdbc:mariadb://mariadb:5432/db --driver-name={{ jdbc_driver_module_name }}'"
+          - ":write-config()"
 
       - ansible.builtin.debug:
           msg: "{{ cli_result }}"

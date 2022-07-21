@@ -5,7 +5,7 @@
     eap_source_version: 7.2
     target_eap_version: 7.3
     jboss_eap_group_install_name: jboss-eap7-jdk11
-    eap_configuration_file: standalone.xml
+    eap_configuration_file: wildfly.xml
     installed_eap_source: True
     migrated_jboss_eap_home: "/opt/jboss_eap/jboss-eap-{{ target_eap_version }}/"
     wildfly_java_package_name: java-11-openjdk-headless
@@ -39,6 +39,8 @@
     - name: "Ensures EAP {{ target_eap_version }} is installed."
       ansible.builtin.include_role:
         name: eap_subs
+      vars:
+        eap_source_version: "{{ target_eap_version }}"
 
   tasks:
     - ansible.builtin.set_fact:
@@ -82,8 +84,7 @@
         - name: "Synchronize custom modules"
           ansible.posix.synchronize:
             src: "{{ migrated_jboss_eap_home }}/modules"
-            #dest: "{{ target_jboss_home }}/modules/"
-            dest: /opt/test
+            dest: "{{ target_jboss_home }}/"
             copy_links: no
             rsync_opts:
               - "--exclude {{ migrated_jboss_eap_home }}/modules/system"
