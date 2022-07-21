@@ -13,9 +13,9 @@
   changed_when:
     - 'not "Nothing to do." in dnf_group_res.stdout'
   when:
-    - eap_subs is defined
-    - eap_subs.skip_group_remove is defined
-    - not eap_subs.skip_group_remove
+    - wildfly_subs is defined
+    - wildfly_subs.skip_group_remove is defined
+    - not wildfly_subs.skip_group_remove
 
 - block:
     - name: "Check that required parameters are provided"
@@ -38,6 +38,6 @@
       changed_when: False
 
   when:
-    - eap_subs is defined
-    - eap_subs.check_repo_disabled is defined
-    - eap_subs.check_repo_disabled
+    - wildfly_subs is defined
+    - wildfly_subs.check_repo_disabled is defined
+    - wildfly_subs.check_repo_disabled

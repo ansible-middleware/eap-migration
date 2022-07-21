@@ -26,9 +26,9 @@
       args:
         creates: "{{ eap_repo_state_file }}"
       when:
-        - eap_subs is defined
-        - eap_subs.check_repo_enable is defined
-        - eap_subs.check_repo_enable
+        - wildfly_subs is defined
+        - wildfly_subs.check_repo_enable is defined
+        - wildfly_subs.check_repo_enable
 
     - name: "Ensures state file exists"
       ansible.builtin.file:

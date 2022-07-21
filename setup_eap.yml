@@ -16,7 +16,7 @@
 
     - name: "Ensure EAP {{ eap_source_version }} is installed."
       ansible.builtin.include_role:
-        name: eap_subs
+        name: wildfly_subs
       vars:
         eap_version: "{{ eap_source_version }}"
 

@@ -17,14 +17,14 @@
   pre_tasks:
     - name: "Ensure EAP {{ eap_source_version }} has been removed."
       ansible.builtin.include_role:
-        name: eap_subs
+        name: wildfly_subs
         tasks_from: uninstall.yml
       vars:
         eap_version: "{{ eap_source_version }}"
 
     - name: "Ensure EAP {{ target_eap_version }} has been installed."
       ansible.builtin.include_role:
-        name: eap_subs
+        name: wildfly_subs
       vars:
         eap_version: "{{ target_eap_version }}"
 
