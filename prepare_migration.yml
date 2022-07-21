@@ -2,81 +2,21 @@
 - name: EAP {{ eap_source_version }} to {{ target_eap_version }} migration playbook
   hosts: localhost
   vars:
-    # vars for source, rpm based installed
     eap_source_version: 7.2
-    jboss_eap_group_install_name: jboss-eap7-jdk11
-    installed_eap_source: True
-    previous_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
-    wildfly_java_package_name: java-11-openjdk-headless
-    # vars for JDBC Driver config
-    jdbc_driver_module_name: "org.mariadb"
-    jdbc_driver_version: 2.7.4
-    jdbc_driver_jar_filename: "mariadb-java-client-{{ jdbc_driver_version }}.jar"
-    jdbc_driver_module_dir: "{{ previous_jboss_eap_home }}/modules/org/mariadb/main"
-    wildfly_user: root
-    wildfly_group: root
-    # vars for target EAP, installed with zipfle
     target_eap_version: 7.3
+    previous_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
     target_zipfile: "jboss-eap-{{ target_eap_version }}.0.zip"
     target_jboss_install_dir: /opt/jboss_eap/
     target_jboss_home: "{{ target_jboss_install_dir }}/jboss-eap-{{ target_eap_version }}/"
-    # migration toolkit vars
+  vars_files:
+    - vars/jdbc_driver.yml
   collections:
     - redhat.jboss_eap
-  pre_tasks:
-
-    - name: "Ensure EAP {{ eap_source_version }} is installed."
-      ansible.builtin.include_role:
-        name: eap_subs
-
-    - name: "Install Maria DB driver in {{ previous_jboss_eap_home }}"
-      ansible.builtin.include_role:
-        name: wildfly_driver
-      vars:
-        jdbc_driver_jar_url: "https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/{{ jdbc_driver_version }}/mariadb-java-client-{{ jdbc_driver_version }}.jar"
-
-    - name: "Ensures JBoss EAP {{ eap_source_version }} is running }}"
-      ansible.builtin.include_role:
-        name: wildfly_systemd
-      vars:
-        wildfly_home: "{{ previous_jboss_eap_home }}"
-        wildfly_systemd_enabled: True
-
-    - ansible.builtin.set_fact:
-        path_to_driver: "{{ jdbc_driver_module_dir }}/{{ jdbc_driver_jar_filename }}"
-
-    - block:
-      - name: "Checks if MariaDB driver is activated"
-        ansible.builtin.include_role:
-          name: wildfly_utils
-          tasks_from: jboss_cli.yml
-        vars:
-          jboss_home: "{{ previous_jboss_eap_home }}"
-          query: "/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:read-resource"
-      rescue:
-
-      - name: "Deploy MariaDB driver is activated"
-        ansible.builtin.include_role:
-          name: wildfly_utils
-          tasks_from: jboss_cli.yml
-        vars:
-          jboss_home: "{{ previous_jboss_eap_home }}"
-          query: "{{ item }}"
-        loop:
-          - "'/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_module_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name=org.mariadb.jdbc.Driver)'"
-          - "'data-source add --jndi-name=java:/MariaDS --name=MariaDBPool --connection-url=jdbc:mariadb://mariadb:5432/db --driver-name={{ jdbc_driver_module_name }}'"
-          - ":write-config()"
-
-      - ansible.builtin.debug:
-          msg: "{{ cli_result }}"
   tasks:
     - name: "Ensures required dependencies are installed."
       ansible.builtin.package:
-        name: "{{ package }}"
-      loop:
-        - unzip
-      loop_control:
-        loop_var: package
+        name: unzip
+        state: present
 
     - name: "Ensures {{ target_jboss_install_dir }} exists."
       ansible.builtin.file:

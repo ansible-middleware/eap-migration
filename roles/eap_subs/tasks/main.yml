@@ -25,6 +25,10 @@
       ansible.builtin.command: "subscription-manager repos --enable={{ eap_repo_name }}"
       args:
         creates: "{{ eap_repo_state_file }}"
+      when:
+        - eap_subs is defined
+        - eap_subs.check_repo_enable is defined
+        - eap_subs.check_repo_enable
 
     - name: "Ensures state file exists"
       ansible.builtin.file:
