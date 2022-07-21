@@ -15,27 +15,18 @@
   collections:
     - redhat.jboss_eap
   pre_tasks:
+    - name: "Ensure EAP {{ eap_source_version }} has been removed."
+      ansible.builtin.include_role:
+        name: eap_subs
+        tasks_from: uninstall.yml
+      vars:
+        eap_version: "{{ eap_source_version }}"
 
-    - name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
-      ansible.builtin.command: "dnf group remove -y {{ jboss_eap_group_install_name }}"
-      register: dnf_group_res
-      changed_when:
-        - 'not "Nothing to do." in dnf_group_res.stdout'
-      when:
-        - not skip_group_remove is defined
-
-    - ansible.builtin.set_fact:
-        eap_repos_name: "jb-eap-{{ eap_source_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
-
-    - name: "Ensures JBoss EAP {{ eap_source_version }} repos are disabled."
-      ansible.builtin.command: "subscription-manager repos --disable={{ eap_repos_name }}"
-      changed_when: False
-
-    - name: "Ensures EAP {{ target_eap_version }} is installed."
+    - name: "Ensure EAP {{ target_eap_version }} has been installed."
       ansible.builtin.include_role:
         name: eap_subs
       vars:
-        eap_source_version: "{{ target_eap_version }}"
+        eap_version: "{{ target_eap_version }}"
 
   tasks:
     - ansible.builtin.set_fact:
@@ -45,6 +36,7 @@
       ansible.builtin.stat:
         path: "{{ migration_state_file }}"
       register: is_migration_done
+
     - ansible.builtin.assert:
         that:
           - is_migration_done is defined
@@ -102,3 +94,11 @@
         msg: "Server has already been migrated."
       when:
         - is_migration_done.stat.exists
+  post_tasks:
+
+    - name: "Ensures JBoss EAP {{ target_eap_version }} is running"
+      ansible.builtin.include_role:
+        name: wildfly_systemd
+      vars:
+        wildfly_home: "{{ target_jboss_home }}"
+        wildfly_systemd_enabled: True

@@ -1,0 +1,43 @@
+---
+- name: "Check that required parameters are provided"
+  ansible.builtin.assert:
+    that:
+      - jboss_eap_group_install_name is defined
+      - eap_version is defined
+    quiet: True
+    fail_msg: "Missing required parameters"
+
+- name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
+  ansible.builtin.command: "dnf group remove -y {{ jboss_eap_group_install_name }}"
+  register: dnf_group_res
+  changed_when:
+    - 'not "Nothing to do." in dnf_group_res.stdout'
+  when:
+    - eap_subs is defined
+    - eap_subs.skip_group_remove is defined
+    - not eap_subs.skip_group_remove
+
+- block:
+    - name: "Check that required parameters are provided"
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution_major_version is defined
+          - ansible_architecture is defined
+        quiet: True
+        fail_msg: "Missing required parameters"
+      when:
+        - not eap_repos_name is defined
+
+    - ansible.builtin.set_fact:
+        eap_repos_name: "jb-eap-{{ eap_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
+      when:
+        - not eap_repos_name is defined
+
+    - name: "Ensures JBoss EAP {{ eap_version }} repos are disabled."
+      ansible.builtin.command: "subscription-manager repos --disable={{ eap_repos_name }}"
+      changed_when: False
+
+  when:
+    - eap_subs is defined
+    - eap_subs.check_repo_disabled is defined
+    - eap_subs.check_repo_disabled

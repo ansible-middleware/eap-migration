@@ -1,0 +1,5 @@
+---
+eap_subs:
+  check_repo_enable: "{{ eap_subs_check_repo_enable }}"
+  check_repo_disabled: "{{ eap_subs_check_repo_disabled }}"
+  skip_group_remove: "{{ eap_subs_skip_remove }}"

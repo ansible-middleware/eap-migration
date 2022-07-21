@@ -17,6 +17,8 @@
     - name: "Ensure EAP {{ eap_source_version }} is installed."
       ansible.builtin.include_role:
         name: eap_subs
+      vars:
+        eap_version: "{{ eap_source_version }}"
 
     - name: "Install Maria DB driver in {{ previous_jboss_eap_home }}"
       ansible.builtin.include_role:
