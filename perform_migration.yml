@@ -15,6 +15,19 @@
   collections:
     - redhat.jboss_eap
   pre_tasks:
+
+    - name: "Populate service facts"
+      ansible.builtin.service_facts:
+
+    - name: "Check if service is running"
+      ansible.builtin.command: "systemctl stop wildfly"
+      when:
+        - ansible_facts is defined
+        - ansible_facts.services is defined
+        - ansible_facts.services["wildfly.service"] is defined
+        - ansible_facts.services["wildfly.service"]['state'] is defined
+        - ansible_facts.services["wildfly.service"]['state'] == 'running'
+
     - name: "Ensure EAP {{ eap_source_version }} has been removed."
       ansible.builtin.include_role:
         name: wildfly_subs
@@ -58,10 +71,6 @@
             owner: "{{ wildfly_user }}"
             group: "{{ wildfly_group }}"
             mode: '0644'
-
-        - ansible.builtin.file:
-            path: /opt/test
-            state: directory
 
         - name: "Ensures 'rsync' is installed."
           ansible.builtin.package:

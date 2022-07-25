@@ -6,9 +6,10 @@
     eap_version: 7.4
     jboss_eap_group_install_name: jboss-eap7-jdk11
     jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
+    skip_disable_eap74: True
     wildfly_enable_yml_config: yes
     wildfly_yml_configs:
-      - "eap_config.yml"
+      - eap_config.yml
   vars_files:
     - vars/jdbc_driver.yml
     - vars/eap_system_info.yml
@@ -20,7 +21,7 @@
       ansible.builtin.include_role:
         name: wildfly_subs
 
-    - name: "Install Maria DB driver in {{ previous_jboss_eap_home }}"
+    - name: "Install Maria DB driver in {{ jboss_eap_home }}"
       ansible.builtin.include_role:
         name: wildfly_driver
       vars:
@@ -29,7 +30,7 @@
     - name: "Ensure JBoss EAP configuration file is deployed."
       ansible.builtin.template:
         src: templates/eap_config.yml.j2
-        dest: /etc/eap_config.yml
+        dest: "{{ jboss_eap_home }}/standalone/eap_config.yml"
         owner: "{{ wildfly_user }}"
         group: "{{ wildfly_group }}"
 

@@ -10,6 +10,12 @@
     quiet: True
     fail_msg: "Required parameters are missing and/or system is NOT RHEL."
 
+- name: "Demo - Ensures JBoss repos 7.4 are disabled."
+  ansible.builtin.command: "subscription-manager repos --disable=jb-eap-7.4-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
+  changed_when: False
+  when:
+    - not skip_disable_eap74 is defined
+
 - ansible.builtin.set_fact:
     eap_repo_name: "jb-eap-{{ eap_version }}-for-rhel-{{ ansible_distribution_major_version }}-{{ ansible_architecture }}-rpms"
   when:

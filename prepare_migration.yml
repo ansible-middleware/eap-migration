@@ -12,7 +12,7 @@
     - vars/jdbc_driver.yml
   collections:
     - redhat.jboss_eap
-  tasks:
+  pre_tasks:
     - name: "Ensures required dependencies are installed."
       ansible.builtin.package:
         name: unzip
@@ -29,7 +29,7 @@
         dest: "{{ target_jboss_install_dir }}"
         creates: "{{ target_jboss_home }}/bin/standalone.sh"
 
-  post_tasks:
+  tasks:
     - name: "Peform migration from {{ previous_jboss_eap_home }} to {{ target_jboss_home }}."
       ansible.builtin.include_role:
         name: wildfly_migration

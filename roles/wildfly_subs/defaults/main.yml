@@ -1,4 +1,4 @@
 ---
-wildfly_subs_check_repo_enable: False
+wildfly_subs_check_repo_enable: True
 wildfly_subs_check_repo_disabled: "{{ wildfly_subs_check_repo_enable }}"
 wildfly_subs_skip_remove: False

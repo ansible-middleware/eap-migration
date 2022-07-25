@@ -7,11 +7,19 @@
     quiet: True
     fail_msg: "Missing required parameters"
 
-- name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
-  ansible.builtin.command: "dnf group remove -y {{ jboss_eap_group_install_name }}"
-  register: dnf_group_res
-  changed_when:
-    - 'not "Nothing to do." in dnf_group_res.stdout'
+- block:
+
+    - name: "Ensures group package {{ jboss_eap_group_install_name }} is removed"
+      ansible.builtin.command: "dnf group remove -y {{ jboss_eap_group_install_name }}"
+      register: dnf_group_res
+      changed_when:
+        - 'not "Nothing to do." in dnf_group_res.stdout'
+
+    - name: "Ensures JBoss EAP Home has been removed {{ jboss_eap_home }}."
+      ansible.builtin.file:
+        path: /opt/rh/eap7/
+        state: absent
+
   when:
     - wildfly_subs is defined
     - wildfly_subs.skip_group_remove is defined

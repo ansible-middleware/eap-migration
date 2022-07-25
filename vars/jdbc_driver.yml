@@ -1,6 +1,6 @@
 ---
 jdbc_driver_module_name: "org.mariadb"
-jdbc_driver_name: "mariadb"
+jdbc_driver_name: "org.mariadb"
 jdbc_driver_version: 2.7.4
 jdbc_driver_jar_filename: "mariadb-java-client-{{ jdbc_driver_version }}.jar"
 jdbc_driver_module_dir: "{{ jboss_eap_home }}/modules/org/mariadb/main"
