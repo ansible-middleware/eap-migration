@@ -54,6 +54,6 @@
           jboss_home: "{{ jboss_eap_home }}"
           query: "{{ item }}"
         loop:
-          - "'/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_module_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name=org.mariadb.jdbc.Driver)'"
-          - "'data-source add --jndi-name=java:/MariaDS --name=MariaDBPool --connection-url=jdbc:mariadb://mariadb:5432/db --driver-name={{ jdbc_driver_module_name }}'"
+          - "'/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:add(driver-name={{ jdbc_driver_name }}, driver-module-name={{ jdbc_driver_module_name }}, driver-class-name={{ jdbc_driver_classname }})'"
+          - "'data-source add --jndi-name={{ mariadb_jndi_name }} --name={{ mariadb_ds_name }} --connection-url={{ mariadb_connection_url }} --driver-name={{ jdbc_driver_module_name }}'"
           - ":write-config()"
