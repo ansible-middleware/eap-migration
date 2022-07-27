@@ -7,7 +7,7 @@
     previous_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
     target_zipfile: "jboss-eap-{{ target_eap_version }}.0.zip"
     target_jboss_install_dir: /opt/jboss_eap/
-    target_jboss_home: "{{ target_jboss_install_dir }}/jboss-eap-{{ target_eap_version }}/"
+    target_jboss_eap_home: "{{ target_jboss_install_dir }}/jboss-eap-{{ target_eap_version }}/"
   vars_files:
     - vars/jdbc_driver.yml
   collections:
@@ -27,9 +27,9 @@
       ansible.builtin.unarchive:
         src: "{{ target_zipfile }}"
         dest: "{{ target_jboss_install_dir }}"
-        creates: "{{ target_jboss_home }}/bin/standalone.sh"
+        creates: "{{ target_jboss_eap_home }}/bin/standalone.sh"
 
   tasks:
-    - name: "Peform migration from {{ previous_jboss_eap_home }} to {{ target_jboss_home }}."
+    - name: "Peform migration from {{ previous_jboss_eap_home }} to {{ target_jboss_eap_home }}."
       ansible.builtin.include_role:
-        name: wildfly_migration
+        name: jboss_eap_migration

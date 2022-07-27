@@ -8,7 +8,7 @@
     installed_eap_source: True
     migrated_jboss_eap_home: "/opt/jboss_eap/jboss-eap-{{ target_eap_version }}/"
     # vars for target EAP, installed with zipfle
-    target_jboss_home: /opt/rh/eap7/root/usr/share/wildfly/
+    target_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
     skip_group_remove: False
   vars_files:
     - vars/eap_system_info.yml
@@ -24,20 +24,20 @@
       when:
         - ansible_facts is defined
         - ansible_facts.services is defined
-        - ansible_facts.services["wildfly.service"] is defined
-        - ansible_facts.services["wildfly.service"]['state'] is defined
-        - ansible_facts.services["wildfly.service"]['state'] == 'running'
+        - ansible_facts.services["jboss_eap.service"] is defined
+        - ansible_facts.services["jboss_eap.service"]['state'] is defined
+        - ansible_facts.services["jboss_eap.service"]['state'] == 'running'
 
     - name: "Ensure EAP {{ eap_source_version }} has been removed."
       ansible.builtin.include_role:
-        name: wildfly_subs
-        tasks_from: uninstall.yml
+        name: jboss_eap_subs
+        tasks_from: disable_repo.yml
       vars:
         eap_version: "{{ eap_source_version }}"
 
     - name: "Ensure EAP {{ target_eap_version }} has been installed."
       ansible.builtin.include_role:
-        name: wildfly_subs
+        name: jboss_eap_subs
       vars:
         eap_version: "{{ target_eap_version }}"
 
@@ -62,7 +62,7 @@
 
         - ansible.builtin.set_fact:
             migrated_conf: "{{ migrated_jboss_eap_home }}/standalone/configuration/{{ eap_configuration_file }}"
-            target_conf: "{{ target_jboss_home }}/standalone/configuration/{{ eap_configuration_file }}"
+            target_conf: "{{ target_jboss_eap_home }}/standalone/configuration/{{ eap_configuration_file }}"
 
         - name: "Copy migrated configuration from {{ migrated_conf }} file to target {{ target_conf }}."
           ansible.builtin.copy:
@@ -80,7 +80,7 @@
         - name: "Synchronize custom modules"
           ansible.posix.synchronize:
             src: "{{ migrated_jboss_eap_home }}/modules"
-            dest: "{{ target_jboss_home }}/"
+            dest: "{{ target_jboss_eap_home }}/"
             copy_links: no
             rsync_opts:
               - "--exclude {{ migrated_jboss_eap_home }}/modules/system"
@@ -107,7 +107,7 @@
 
     - name: "Ensures JBoss EAP {{ target_eap_version }} is running"
       ansible.builtin.include_role:
-        name: wildfly_systemd
+        name: jboss_eap_systemd
       vars:
-        wildfly_home: "{{ target_jboss_home }}"
-        wildfly_systemd_enabled: True
+        jboss_eap_home: "{{ target_jboss_eap_home }}"
+        jboss_eap_systemd_enabled: True

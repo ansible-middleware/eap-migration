@@ -1,5 +1,5 @@
 ---
-wildfly_java_package_name: java-11-openjdk-headless
+jboss_eap_java_package_name: java-11-openjdk-headless
 jboss_eap_group_install_name: jboss-eap7-jdk11
-wildfly_user: root
-wildfly_group: root
+jboss_eap_user: root
+jboss_eap_group: root

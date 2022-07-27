@@ -16,19 +16,19 @@
 
     - name: "Ensure EAP {{ eap_source_version }} is installed."
       ansible.builtin.include_role:
-        name: wildfly_subs
+        name: jboss_eap_subs
       vars:
         eap_version: "{{ eap_source_version }}"
 
     - name: "Install Maria DB driver in {{ jboss_eap_home }}"
       ansible.builtin.include_role:
-        name: wildfly_driver
+        name: jboss_eap_driver
       vars:
         jdbc_driver_jar_url: "https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/{{ jdbc_driver_version }}/mariadb-java-client-{{ jdbc_driver_version }}.jar"
 
     - name: "Ensures JBoss EAP {{ eap_source_version }} is running"
       ansible.builtin.include_role:
-        name: wildfly_systemd
+        name: jboss_eap_systemd
       vars:
         wildfly_home: "{{ jboss_eap_home }}"
         wildfly_systemd_enabled: True
@@ -39,7 +39,7 @@
     - block:
       - name: "Checks if MariaDB driver is activated"
         ansible.builtin.include_role:
-          name: wildfly_utils
+          name: jboss_eap_utils
           tasks_from: jboss_cli.yml
         vars:
           jboss_home: "{{ jboss_eap_home }}"
@@ -48,7 +48,7 @@
 
       - name: "Deploy MariaDB driver is activated"
         ansible.builtin.include_role:
-          name: wildfly_utils
+          name: jboss_eap_utils
           tasks_from: jboss_cli.yml
         vars:
           jboss_home: "{{ jboss_eap_home }}"
