@@ -1,6 +1,6 @@
 ---
 - name: EAP {{ eap_source_version }} to {{ target_eap_version }} migration playbook
-  hosts: localhost
+  hosts: all
   vars:
     eap_source_version: 7.2
     target_eap_version: 7.3
@@ -10,6 +10,8 @@
     # vars for target EAP, installed with zipfle
     target_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
     skip_group_remove: False
+    jboss_eap_service_name: jboss_eap
+    jboss_eap_systemd_service_name: "{{ jboss_eap_service_name }}.service"
   vars_files:
     - vars/eap_system_info.yml
   collections:
@@ -20,13 +22,13 @@
       ansible.builtin.service_facts:
 
     - name: "Check if service is running"
-      ansible.builtin.command: "systemctl stop wildfly"
+      ansible.builtin.command: "systemctl stop {{ jboss_eap_service_name }}"
       when:
         - ansible_facts is defined
         - ansible_facts.services is defined
-        - ansible_facts.services["jboss_eap.service"] is defined
-        - ansible_facts.services["jboss_eap.service"]['state'] is defined
-        - ansible_facts.services["jboss_eap.service"]['state'] == 'running'
+        - ansible_facts.services[jboss_eap_systemd_service_name] is defined
+        - ansible_facts.services[jboss_eap_systemd_service_name]['state'] is defined
+        - ansible_facts.services[jboss_eap_systemd_service_name]['state'] == 'running'
 
     - name: "Ensure EAP {{ eap_source_version }} has been removed."
       ansible.builtin.include_role:
