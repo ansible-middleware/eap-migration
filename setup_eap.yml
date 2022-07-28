@@ -1,6 +1,6 @@
 ---
 - name: Ensures EAP {{ eap_source_version }} is installed and configured
-  hosts: localhost
+  hosts: all
   vars:
     # vars for source, rpm based installed
     eap_source_version: 7.2

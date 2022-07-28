@@ -1,6 +1,6 @@
 ---
 - name: EAP {{ eap_source_version }} to {{ target_eap_version }} migration playbook
-  hosts: localhost
+  hosts: all
   vars:
     eap_source_version: 7.2
     target_eap_version: 7.3
