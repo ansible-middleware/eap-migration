@@ -70,8 +70,8 @@
           ansible.builtin.copy:
             src: "{{ migrated_conf }}"
             dest: "{{ target_conf }}"
-            owner: "{{ wildfly_user }}"
-            group: "{{ wildfly_group }}"
+            owner: "{{ jboss_eap_user }}"
+            group: "{{ jboss_eap_group }}"
             mode: '0644'
 
         - name: "Ensures 'rsync' is installed."
