@@ -4,7 +4,7 @@
   vars:
     eap_source_version: 7.2
     target_eap_version: 7.3
-    eap_configuration_file: wildfly.xml
+    eap_configuration_file: jboss_eap.xml
     installed_eap_source: True
     migrated_jboss_eap_home: "/opt/jboss_eap/jboss-eap-{{ target_eap_version }}/"
     # vars for target EAP, installed with zipfle
@@ -73,6 +73,7 @@
             owner: "{{ jboss_eap_user }}"
             group: "{{ jboss_eap_group }}"
             mode: '0644'
+            remote_src: True
 
         - name: "Ensures 'rsync' is installed."
           ansible.builtin.package:
