@@ -6,6 +6,24 @@ instance to a newer version.
 
 Note: this demonstration is using JBoss EAP rpm installation and the Red Hat productized collection (redhat.jboss_eap) available on Automation Hub. Thus it requires access to those assets. However, the content can easily be adapted to use the upstream version of JBoss EAP (Wildfly) and the upstream version of the collection [Wildfly](https://github.com/middleware_automation/wildfly)
 
+## Prerequistes
+
+As this demo uses a collection available on [Red Hat Automation Hub](https://www.ansible.com/products/automation-hub), on top of collection coming from Ansible Galaxy, you'll need to properly configure access to both system and provide your credentials for Automation Hub, in the ansible.cfg file:
+
+    [galaxy]
+    server_list = automation_hub, galaxy
+
+    [galaxy_server.galaxy]
+    url=https://galaxy.ansible.com/
+
+    [galaxy_server.automation_hub]
+    url=https://cloud.redhat.com/api/automation-hub/
+
+    auth_url=https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token
+
+    token=<your-token>
+
+The playbook prepare_migration expects the jboss-eap-7.3.zip to be available on the target system (localhost), you'll need to retrieve this archive from the [Red Hat Customers portal](https://access.redhat.com/).
 
 ## Set up
 
@@ -25,7 +43,7 @@ Before running the first playbook, ensure the required Ansible collection have b
 
 Then you can simply each playbook, one after the other:
 
-    $ ansible-playbook setup_eap.yml
+    $ ansible-playbook -i inventory setup_eap.yml
 
 At the end of this first playbook's execution, the 'jboss_eap' service is running and the instance is configured to use MariaDB:
 
@@ -36,17 +54,19 @@ At the end of this first playbook's execution, the 'jboss_eap' service is runnin
 
 From there, you can use the next playbook to prepare the migration:
 
-	$ ansible-playbook prepare_migration.yml
+	$ ansible-playbook -i inventory prepare_migration.yml
 
 And finally, perform the migration itself:
 
-	$ ansible-playbook perform_migration.yml
+	$ ansible-playbook -i inventory perform_migration.yml
 
 Note that the same playbooks can be used to migrate again from 7.3 to 7.4 :
 
-	$ ansible-playbook  -e eap_source_version=7.3 \
+	$ ansible-playbook  -i inventory \
+                        -e eap_source_version=7.3 \
                  		-e target_eap_version=7.4 \
                  		prepare_migration.yml
-	$ ansible-playbook 	-e eap_source_version=7.3 \
+	$ ansible-playbook 	-i inventory \
+                        -e eap_source_version=7.3 \
                  		-e target_eap_version=7.4 \
                  		perform_migration.yml
