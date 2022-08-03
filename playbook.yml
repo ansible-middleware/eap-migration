@@ -1,0 +1,14 @@
+---
+- import_playbook: setup_eap.yml
+- import_playbook: prepare_migration.yml
+- import_playbook: perform_migration.yml
+
+- import_playbook: prepare_migration.yml
+  vars:
+    eap_source_version: 7.3
+    target_eap_version: 7.4
+
+- import_playbook: perform_migration.yml
+  vars:
+    eap_source_version: 7.3
+    target_eap_version: 7.4

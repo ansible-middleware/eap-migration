@@ -1,0 +1,29 @@
+---
+- name: Verify
+  hosts: instance
+  vars:
+    mariadb_ds: MariaDBPool
+    jboss_eap_service_name: jboss_eap.service
+    jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
+  collections:
+    - redhat.jboss_eap
+  tasks:
+	- name: Populate service facts
+  	  ansible.builtin.service_facts:
+
+    - name: "Check that JBoss EAP service '{{ jboss_eap_service_name }}' is running."
+      ansible.builtin.assert:
+        that:
+		  - ansible_facts is defined
+		  - ansible_facts.services is defined
+          - ansible_facts.services[jboss_eap_service_name] is defined
+          - ansible_facts.services[jboss_eap_service_name]['state'] == 'running'
+        quiet: True
+
+    - name: "Check that MariaDB DS is defined."
+      ansible.builtin.include_role:
+        name: jboss_eap_utils
+        tasks_from: jboss_cli.yml
+      vars:
+        jboss_home: "{{ jboss_eap_home }}"
+        query: "/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:read-resource"
