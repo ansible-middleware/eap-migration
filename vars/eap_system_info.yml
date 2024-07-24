@@ -1,5 +1,5 @@
 ---
-jboss_eap_java_package_name: java-11-openjdk-headless
-jboss_eap_group_install_name: jboss-eap7-jdk11
-jboss_eap_user: root
-jboss_eap_group: root
+eap_java_package_name: java-11-openjdk-headless
+eap_apply_cp: false
+eap_user: root
+eap_group: root

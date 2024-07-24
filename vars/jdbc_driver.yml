@@ -1,10 +1,11 @@
 ---
-jdbc_driver_module_name: "org.mariadb"
-jdbc_driver_name: "org.mariadb"
-jdbc_driver_version: 2.7.4
-jdbc_driver_jar_filename: "mariadb-java-client-{{ jdbc_driver_version }}.jar"
-jdbc_driver_module_dir: "{{ jboss_eap_home }}/modules/org/mariadb/main"
-jdbc_driver_classname: "org.mariadb.jdbc.Driver"
+eap_driver_module_name: "org.mariadb"
+eap_driver_name: "org.mariadb"
+eap_driver_version: 2.7.4
+eap_driver_jar_filename: "mariadb-java-client-{{ eap_driver_version }}.jar"
+eap_driver_module_dir: "{{ eap_home }}/modules/org/mariadb/main"
+eap_driver_classname: "org.mariadb.jdbc.Driver"
+eap_driver_jar_url: "https://repo.maven.apache.org/maven2/org/mariadb/jdbc/mariadb-java-client/{{eap_driver_version}}/mariadb-java-client-{{eap_driver_version}}.jar"
 
 mariadb_ds_name: "MariaDBPool"
 mariadb_jndi_name: "java:/MariaDS"

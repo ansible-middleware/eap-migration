@@ -1,77 +1,69 @@
 ---
-- name: EAP {{ eap_source_version }} to {{ target_eap_version }} migration playbook
+- name: "EAP {{ eap_source_version }} to {{ target_eap_version }} migration playbook"
   hosts: all
   vars:
-    eap_source_version: 7.2
-    target_eap_version: 7.3
-    eap_configuration_file: jboss_eap.xml
+    eap_source_version: 7.3.0
+    target_eap_version: 7.4.0
+    eap_configuration_file: eap.xml
     installed_eap_source: True
-    migrated_jboss_eap_home: "/opt/jboss_eap/jboss-eap-{{ target_eap_version }}/"
-    # vars for target EAP, installed with zipfle
-    target_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
+    eap_install_workdir: /opt/jboss_eap/
+    migrated_eap_home: "{{ eap_install_workdir }}/jboss-eap-{{ (target_eap_version.split('.'))[0:2] | join('.') }}/"
+    previous_eap_home: "{{ eap_install_workdir }}/jboss-eap-{{ (eap_source_version.split('.'))[0:2] | join('.') }}/"
+    target_eap_home: "{{ eap_install_workdir }}/jboss-eap-{{ (target_eap_version.split('.'))[0:2] | join('.') }}/"
     skip_group_remove: False
-    jboss_eap_service_name: jboss_eap
-    jboss_eap_systemd_service_name: "{{ jboss_eap_service_name }}.service"
+    eap_service_name: eap
+    eap_systemd_service_name: "{{ eap_service_name }}.service"
   vars_files:
     - vars/eap_system_info.yml
   collections:
-    - redhat.jboss_eap
+    - redhat.eap
   pre_tasks:
-
     - name: "Populate service facts"
       ansible.builtin.service_facts:
 
-    - name: "Check if service is running"
-      ansible.builtin.command: "systemctl stop {{ jboss_eap_service_name }}"
+    - name: "Stop EAP service"
+      ansible.builtin.service:
+        name: "{{ eap_service_name }}"
+        state: stopped
+      become: yes
+      become_user: root
       when:
         - ansible_facts is defined
         - ansible_facts.services is defined
-        - ansible_facts.services[jboss_eap_systemd_service_name] is defined
-        - ansible_facts.services[jboss_eap_systemd_service_name]['state'] is defined
-        - ansible_facts.services[jboss_eap_systemd_service_name]['state'] == 'running'
-
-    - name: "Ensure EAP {{ eap_source_version }} has been removed."
-      ansible.builtin.include_role:
-        name: jboss_eap_subs
-        tasks_from: disable_repo.yml
-      vars:
-        eap_version: "{{ eap_source_version }}"
-
-    - name: "Ensure EAP {{ target_eap_version }} has been installed."
-      ansible.builtin.include_role:
-        name: jboss_eap_subs
-      vars:
-        eap_version: "{{ target_eap_version }}"
+        - ansible_facts.services[eap_systemd_service_name] is defined
+        - ansible_facts.services[eap_systemd_service_name]['state'] is defined
+        - ansible_facts.services[eap_systemd_service_name]['state'] == 'running'
 
   tasks:
     - ansible.builtin.set_fact:
-        migration_state_file: /opt/rh/eap7/root/usr/share/wildfly/migration/.migrated
+        migration_state_file: "{{ migrated_eap_home }}/migration/reports/migration-report.xml"
 
     - name: "Load migration state file data"
       ansible.builtin.stat:
         path: "{{ migration_state_file }}"
       register: is_migration_done
+      become: yes
+      become_user: root
 
     - ansible.builtin.assert:
         that:
           - is_migration_done is defined
           - is_migration_done.stat is defined
-          - is_migration_done.stat.exists is defined
         quiet: True
         fail_msg: "Failed to retrieve metadata on migration state file: {{ migration_state_file }}."
 
     - block:
 
         - ansible.builtin.set_fact:
-            migrated_conf: "{{ migrated_jboss_eap_home }}/standalone/configuration/{{ eap_configuration_file }}"
-            target_conf: "{{ target_jboss_eap_home }}/standalone/configuration/{{ eap_configuration_file }}"
+            migrated_conf: "{{ migrated_eap_home }}/standalone/configuration/{{ eap_configuration_file }}"
+            target_conf: "{{ target_eap_home }}/standalone/configuration/{{ eap_configuration_file }}"
 
         - name: "Copy migrated configuration from {{ migrated_conf }} file to target {{ target_conf }}."
           ansible.builtin.copy:
             src: "{{ migrated_conf }}"
             dest: "{{ target_conf }}"
-            owner: "{{ jboss_eap_user }}"
-            group: "{{ jboss_eap_group }}"
+            owner: "{{ eap_user }}"
+            group: "{{ eap_group }}"
             mode: '0644'
             remote_src: True
 
@@ -82,11 +74,11 @@
 
         - name: "Synchronize custom modules"
           ansible.posix.synchronize:
-            src: "{{ migrated_jboss_eap_home }}/modules"
-            dest: "{{ target_jboss_eap_home }}/"
+            src: "{{ migrated_eap_home }}/modules"
+            dest: "{{ target_eap_home }}/"
             copy_links: no
             rsync_opts:
-              - "--exclude {{ migrated_jboss_eap_home }}/modules/system"
+              - "--exclude {{ migrated_eap_home }}/modules/system"
 
         - name: "Ensures state file exists"
           ansible.builtin.file:
@@ -106,11 +98,11 @@
         msg: "Server has already been migrated."
       when:
         - is_migration_done.stat.exists
-  post_tasks:
 
+  post_tasks:
     - name: "Ensures JBoss EAP {{ target_eap_version }} is running"
       ansible.builtin.include_role:
-        name: jboss_eap_systemd
+        name: eap_systemd
       vars:
-        jboss_eap_home: "{{ target_jboss_eap_home }}"
-        jboss_eap_systemd_enabled: True
+        eap_systemd_enabled: True
+        eap_version: "{{ target_eap_version }}"

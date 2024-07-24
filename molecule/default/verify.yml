@@ -3,27 +3,33 @@
   hosts: instance
   vars:
     mariadb_ds: MariaDBPool
-    jboss_eap_service_name: jboss_eap.service
-    jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
+    eap_service_name: eap.service
+    target_eap_version: 7.4.0
+    target_eap_home: "{{ eap_install_workdir }}/jboss-eap-{{ (target_eap_version.split('.'))[0:2] | join('.') }}/"
+  vars_files:
+    - ../../vars/jdbc_driver.yml
+    - ../../vars/eap_system_info.yml
   collections:
-    - redhat.jboss_eap
+    - redhat.eap
   tasks:
-	- name: Populate service facts
-  	  ansible.builtin.service_facts:
+    - name: Populate service facts
+      ansible.builtin.service_facts:
 
-    - name: "Check that JBoss EAP service '{{ jboss_eap_service_name }}' is running."
+    - name: "Check that JBoss EAP service '{{ eap_service_name }}' is running."
       ansible.builtin.assert:
         that:
-		  - ansible_facts is defined
-		  - ansible_facts.services is defined
-          - ansible_facts.services[jboss_eap_service_name] is defined
-          - ansible_facts.services[jboss_eap_service_name]['state'] == 'running'
+          - ansible_facts is defined
+          - ansible_facts.services is defined
+          - ansible_facts.services[eap_service_name] is defined
+          - ansible_facts.services[eap_service_name]['state'] == 'running'
         quiet: True
 
-    - name: "Check that MariaDB DS is defined."
+    - name: "Deploy MariaDB driver is activated"
       ansible.builtin.include_role:
-        name: jboss_eap_utils
+        name: eap_utils
         tasks_from: jboss_cli.yml
       vars:
-        jboss_home: "{{ jboss_eap_home }}"
-        query: "/subsystem=datasources/jdbc-driver={{ jdbc_driver_module_name }}:read-resource"
+        eap_home: "{{ target_eap_home }}"
+        jboss_cli_query: "{{ item }}"
+      loop:
+        - "'/subsystem=datasources/jdbc-driver={{ eap_driver_module_name }}:read-resource'"
