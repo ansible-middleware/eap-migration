@@ -1,35 +1,27 @@
 ---
-- name: EAP {{ eap_source_version }} to {{ target_eap_version }} migration playbook
+- name: "EAP {{ eap_source_version }} to {{ target_eap_version }} migration playbook"
   hosts: all
   vars:
-    eap_source_version: 7.2
-    target_eap_version: 7.3
-    previous_jboss_eap_home: /opt/rh/eap7/root/usr/share/wildfly/
-    target_zipfile: "jboss-eap-{{ target_eap_version }}.0.zip"
-    target_jboss_install_dir: /opt/jboss_eap/
-    target_jboss_eap_home: "{{ target_jboss_install_dir }}/jboss-eap-{{ target_eap_version }}/"
+    eap_source_version: 7.3.0
+    target_eap_version: 7.4.0
+    eap_install_workdir: /opt/jboss_eap/
+    previous_eap_home: "{{ eap_install_workdir }}/jboss-eap-{{ (eap_source_version.split('.'))[0:2] | join('.') }}/"
+    target_eap_home: "{{ eap_install_workdir }}/jboss-eap-{{ (target_eap_version.split('.'))[0:2] | join('.') }}/"
   vars_files:
     - vars/jdbc_driver.yml
+    - vars/eap_system_info.yml
   collections:
-    - redhat.jboss_eap
+    - redhat.eap
   pre_tasks:
-    - name: "Ensures required dependencies are installed."
-      ansible.builtin.package:
-        name: unzip
-        state: present
-
-    - name: "Ensures {{ target_jboss_install_dir }} exists."
-      ansible.builtin.file:
-        path: "{{ target_jboss_install_dir }}"
-        state: directory
-
-    - name: "Ensures new EAP version {{ target_zipfile }} has been unarchive into {{ target_jboss_install_dir }}"
-      ansible.builtin.unarchive:
-        src: "{{ target_zipfile }}"
-        dest: "{{ target_jboss_install_dir }}"
-        creates: "{{ target_jboss_eap_home }}/bin/standalone.sh"
+    - name: "Ensures new EAP {{ target_eap_version }} is installed"
+      ansible.builtin.include_role:
+        name: eap_install
+      vars:
+        eap_version: "{{ target_eap_version }}"
 
   tasks:
-    - name: "Peform migration from {{ previous_jboss_eap_home }} to {{ target_jboss_eap_home }}."
+    - name: "Perform migration from {{ previous_eap_home }} to {{ target_eap_home }}."
       ansible.builtin.include_role:
-        name: jboss_eap_migration
+        name: eap_migration
+      vars:
+        eap_migration_environment_props: eap.environment.properties.j2

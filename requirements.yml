@@ -1,5 +1,5 @@
 ---
 collections:
-  - name: redhat.jboss_eap
+  - name: redhat.eap
   - name: ansible.posix
 

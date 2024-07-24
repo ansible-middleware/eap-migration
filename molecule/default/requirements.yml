@@ -3,5 +3,4 @@ collections:
   - name: community.general
   - name: community.docker
   - name: ansible.posix
-  - name: redhat.jboss_eap
-    version: ">=1.1.0"
+  - name: redhat.eap
